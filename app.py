@@ -144,6 +144,27 @@ st.set_page_config(
     layout="centered"
 )
 
+# ── Open Graph tags for link previews (WhatsApp, etc.) ──
+components.html(
+    """
+    <script>
+        const ogTags = [
+            {property: "og:title", content: "VERISCAN — Fake News Detection System"},
+            {property: "og:description", content: "Powered by BERT + LSTM · Explained by LIME"},
+            {property: "og:image", content: "https://raw.githubusercontent.com/sandra-gorgi-samuel/veriscan-app/main/assets/og-image.png"},
+            {property: "og:type", content: "website"}
+        ];
+        ogTags.forEach(tag => {
+            const meta = document.createElement('meta');
+            meta.setAttribute('property', tag.property);
+            meta.setAttribute('content', tag.content);
+            window.parent.document.head.appendChild(meta);
+        });
+    </script>
+    """,
+    height=0
+)
+
 st.markdown(
     "<h1 style='text-align:center; letter-spacing:2px; "
     "color:#21e6c1; text-shadow:0 0 12px rgba(33,230,193,0.5);'>"
@@ -237,7 +258,15 @@ if predict_btn:
                 )
                 st.stop()
             else:
-                st.success(f"✅ Article fetched — {count_words(article_text)} words extracted.")
+                fetched_wc = count_words(article_text)
+                st.success(f"✅ Article fetched — {fetched_wc} words extracted.")
+                if fetched_wc > WORD_LIMIT:
+                    st.warning(
+                        f"⚠️ The fetched article is **{fetched_wc} words**, which exceeds "
+                        f"the model's ~{WORD_LIMIT}-word effective limit (512 BERT tokens). "
+                        f"Only the first ~{WORD_LIMIT} words will actually be analysed — "
+                        f"the rest will be truncated."
+                    )
                 with st.expander("📄 View fetched article text"):
                     st.write(article_text)
                 analysis_text = article_text
@@ -245,9 +274,11 @@ if predict_btn:
             analysis_text = user_input
             wc = count_words(analysis_text)
             if wc > WORD_LIMIT:
-                st.info(
-                    f"ℹ️ Analysing the first ~{WORD_LIMIT} words only "
-                    f"(article is {wc} words, exceeding the model's effective limit)."
+                st.warning(
+                    f"⚠️ Your article is **{wc} words**, which exceeds "
+                    f"the model's ~{WORD_LIMIT}-word effective limit (512 BERT tokens). "
+                    f"Only the first ~{WORD_LIMIT} words will actually be analysed — "
+                    f"the rest will be truncated."
                 )
 
         # ── Step 1: Run prediction ──────────────────────────
