@@ -97,13 +97,20 @@ lime_explainer = get_explainer()
 # PAGE CONFIG & HEADER
 # ─────────────────────────────────────────
 st.set_page_config(
-    page_title="Fake News Detector",
-    page_icon="📰",
+    page_title="VERISCAN | Fake News Detection",
+    page_icon="🛡️",
     layout="centered"
 )
 
 st.markdown(
-    "<h1 style='text-align:center;'>📰 Fake News Detection System</h1>",
+    "<h1 style='text-align:center; letter-spacing:2px; "
+    "color:#21e6c1; text-shadow:0 0 12px rgba(33,230,193,0.5);'>"
+    "🛡️ VERISCAN</h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='text-align:center; font-size:18px; margin-top:-10px;'>"
+    "Fake News Detection System</p>",
     unsafe_allow_html=True
 )
 st.markdown(
