@@ -272,14 +272,6 @@ if predict_btn:
                 analysis_text = article_text
         else:
             analysis_text = user_input
-            wc = count_words(analysis_text)
-            if wc > WORD_LIMIT:
-                st.warning(
-                    f"⚠️ Your article is **{wc} words**, which exceeds "
-                    f"the model's ~{WORD_LIMIT}-word effective limit (512 BERT tokens). "
-                    f"Only the first ~{WORD_LIMIT} words will actually be analysed — "
-                    f"the rest will be truncated."
-                )
 
         # ── Step 1: Run prediction ──────────────────────────
         with st.spinner("Running prediction... 🧠"):
