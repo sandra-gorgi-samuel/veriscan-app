@@ -7,6 +7,9 @@ from lime.lime_text import LimeTextExplainer
 import numpy as np
 import streamlit.components.v1 as components
 from huggingface_hub import hf_hub_download
+import requests
+from bs4 import BeautifulSoup
+import re
 
 # ─────────────────────────────────────────
 # DEVICE
@@ -94,6 +97,45 @@ def get_explainer():
 lime_explainer = get_explainer()
 
 # ─────────────────────────────────────────
+# WORD LIMIT CONSTANTS
+# ─────────────────────────────────────────
+WORD_LIMIT = 400  # roughly matches BERT's 512-token cap
+
+def count_words(text):
+    return len(text.split())
+
+# ─────────────────────────────────────────
+# URL ARTICLE EXTRACTION
+# ─────────────────────────────────────────
+def is_url(text):
+    """Checks whether the pasted input looks like a URL rather than article text."""
+    return bool(re.match(r"^https?://", text.strip()))
+
+def extract_article_from_url(url):
+    """Fetches a webpage and extracts the main article text using BeautifulSoup."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    # Remove non-article elements
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
+        tag.decompose()
+
+    # Prefer <article> tag if present, else fall back to all <p> tags
+    article_tag = soup.find("article")
+    if article_tag:
+        paragraphs = article_tag.find_all("p")
+    else:
+        paragraphs = soup.find_all("p")
+
+    text = " ".join(p.get_text(" ", strip=True) for p in paragraphs)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+# ─────────────────────────────────────────
 # PAGE CONFIG & HEADER
 # ─────────────────────────────────────────
 st.set_page_config(
@@ -125,12 +167,39 @@ st.write("---")
 if "text" not in st.session_state:
     st.session_state.text = ""
 
-user_input = st.text_area(
-    "📝 Paste News Article Below",
-    height=200,
-    key="text",
-    placeholder="Paste a news article here and click Analyse News..."
+input_mode = st.radio(
+    "Choose input method",
+    ["📝 Paste Text", "🔗 Paste URL"],
+    horizontal=True,
+    label_visibility="collapsed"
 )
+
+if input_mode == "🔗 Paste URL":
+    user_input = st.text_input(
+        "🔗 Paste a News Article URL",
+        key="text",
+        placeholder="https://www.example.com/news/article-title..."
+    )
+else:
+    user_input = st.text_area(
+        "📝 Paste News Article Below",
+        height=200,
+        key="text",
+        placeholder="Paste a news article here and click Analyse News..."
+    )
+
+# ── Live word count feedback (text mode only) ───────────
+if input_mode == "📝 Paste Text" and user_input.strip() != "":
+    wc = count_words(user_input)
+    if wc > WORD_LIMIT:
+        st.warning(
+            f"⚠️ Your article is **{wc} words**, which exceeds the model's "
+            f"~{WORD_LIMIT}-word effective limit (512 BERT tokens). "
+            f"Only the first ~{WORD_LIMIT} words will actually be analysed — "
+            f"the rest will be truncated."
+        )
+    else:
+        st.caption(f"📝 Word count: {wc} / {WORD_LIMIT}")
 
 col1, col2 = st.columns([1, 1])
 with col1:
@@ -147,13 +216,44 @@ if clear_btn:
 # ─────────────────────────────────────────
 if predict_btn:
     if user_input.strip() == "":
-        st.warning("⚠️ Please enter some news text before analysing.")
+        st.warning("⚠️ Please enter some news text or a URL before analysing.")
+    elif input_mode == "🔗 Paste URL" and not is_url(user_input):
+        st.error("⚠️ That doesn't look like a valid URL. It should start with http:// or https://")
     else:
+        # ── Step 0: Resolve input — URL or raw text ─────────
+        if input_mode == "🔗 Paste URL":
+            with st.spinner("🔗 Fetching article from URL..."):
+                try:
+                    article_text = extract_article_from_url(user_input.strip())
+                except Exception as e:
+                    article_text = ""
+                    st.error(f"❌ Couldn't fetch that URL: {e}")
+
+            if not article_text or count_words(article_text) < 30:
+                st.error(
+                    "⚠️ Couldn't extract readable article text from that link. "
+                    "Some sites block automated fetching, or the page may not be a "
+                    "plain article. Try pasting the article text directly instead."
+                )
+                st.stop()
+            else:
+                st.success(f"✅ Article fetched — {count_words(article_text)} words extracted.")
+                with st.expander("📄 View fetched article text"):
+                    st.write(article_text)
+                analysis_text = article_text
+        else:
+            analysis_text = user_input
+            wc = count_words(analysis_text)
+            if wc > WORD_LIMIT:
+                st.info(
+                    f"ℹ️ Analysing the first ~{WORD_LIMIT} words only "
+                    f"(article is {wc} words, exceeding the model's effective limit)."
+                )
 
         # ── Step 1: Run prediction ──────────────────────────
         with st.spinner("Running prediction... 🧠"):
             enc = tokenizer(
-                user_input,
+                analysis_text,
                 return_tensors="pt",
                 truncation=True,
                 padding=True,
@@ -197,7 +297,7 @@ if predict_btn:
 
         with st.spinner("Generating LIME explanation — this may take ~30 seconds... ⏳"):
             explanation = lime_explainer.explain_instance(
-                user_input,
+                analysis_text,
                 predict_proba,
                 num_features=12,   # top 12 influential words
                 num_samples=500    # higher = more accurate, but slower
