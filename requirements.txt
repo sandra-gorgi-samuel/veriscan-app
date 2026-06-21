@@ -1,9 +1,10 @@
 streamlit
+torch
+torchvision
 transformers
 lime
 numpy
 huggingface_hub
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
 requests
-   beautifulsoup4
+beautifulsoup4
