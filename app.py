@@ -318,7 +318,7 @@ if predict_btn:
             "how the model's prediction changes — revealing which words matter most."
         )
 
-        with st.spinner("Generating LIME explanation — this may take ~30 seconds... ⏳"):
+        with st.spinner("Generating LIME explanation — this may take ~5 minutes... ⏳"):
             explanation = lime_explainer.explain_instance(
                 analysis_text,
                 predict_proba,
