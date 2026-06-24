@@ -323,7 +323,7 @@ if predict_btn:
                 analysis_text,
                 predict_proba,
                 num_features=10,
-                num_samples=100
+                num_samples=50
             )
 
         # ── Word importance bar chart ───────────────────────
