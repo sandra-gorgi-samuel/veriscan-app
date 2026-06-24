@@ -182,6 +182,22 @@ st.markdown(
 )
 st.write("---")
 
+# CSS: red border when empty, green when content entered
+st.markdown("""
+<style>
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextArea"] textarea {
+    border: 2px solid #ff4b4b !important;
+    border-radius: 8px !important;
+    transition: border-color 0.3s ease;
+}
+div[data-testid="stTextInput"] input:not(:placeholder-shown),
+div[data-testid="stTextArea"] textarea:not(:placeholder-shown) {
+    border: 2px solid #21c354 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ─────────────────────────────────────────
 # INPUT AREA
 # ─────────────────────────────────────────
