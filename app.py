@@ -322,8 +322,8 @@ if predict_btn:
             explanation = lime_explainer.explain_instance(
                 analysis_text,
                 predict_proba,
-                num_features=12,   # top 12 influential words
-                num_samples=500    # higher = more accurate, but slower
+                num_features=12,
+                num_samples=150
             )
 
         # ── Word importance bar chart ───────────────────────
